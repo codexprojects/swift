@@ -221,6 +221,59 @@ func docCommentWithGybLineNumber() {}
 func customSourceLocation() {}
 #sourceLocation() // reset
 
+/// IS_DOC_NOT_ATTACHED
+/// Should not returned with the comments for the function below it or prevent
+/// its actual comment from being returned.
+
+/// priorCommentOneLineGap Aaa.
+///
+/// Bbb.
+func priorCommentOneLineGap {}
+
+/// IS_DOC_NOT_ATTACHED
+/// Same as above but with a two line gap this time.
+
+
+/// priorCommentTwoLineGap Aaa.
+///
+/// Bbb.
+func priorCommentTwoLineGap {}
+
+/// IS_DOC_NOT_ATTACHED
+/// Make sure a gyb comment doesn't cause the previous comment to stay
+/// attached.
+// ###line 9001
+
+/// priorCommentGyb Aaa.
+///
+/// Bbb.
+func priorCommentGyb() {}
+
+/**
+  IS_DOC_NOT_ATTACHED
+  No whitespace but two block comments should not merge.
+ */
+/**
+ priorBlockMultiLineComment Aaa.
+
+  Bbb.
+ */
+func priorBlockMultiLineComment() {}
+
+/** IS_DOC_NOT_ATTACHED Same but single line */
+/**
+ priorBlockSingleLineComment Aaa.
+
+  Bbb.
+ */
+func priorBlockSingleLineComment() {}
+
+/** IS_DOC_NOT_ATTACHED Same but mixed */
+/// priorBlockMixedComment Aaa.
+///
+/// Bbb.
+func priorBlockMixedComment() {}
+
 /**
 func unterminatedBlockDocComment() {}
 
@@ -313,3 +366,10 @@ func unterminatedBlockDocComment() {}
 // CHECK-NEXT: comment_attach.swift:210:6: Func/weirdBlockDocComment RawComment=[/**/]
 // CHECK-NEXT: comment_attach.swift:217:6: Func/docCommentWithGybLineNumber RawComment=[/// docCommentWithGybLineNumber Aaa.\n/// Bbb.\n/// Ccc.\n]
 // CHECK-NEXT: custom.swuft:2001:6: Func/customSourceLocation RawComment=[/// Oooh, custom!\n]
+// CHECK-NEXT: comment_attach.swift:231:6: Func/priorCommentOneLineGap RawComment=[/// priorCommentOneLineGap Aaa.\n///\n/// Bbb.\n]
+// CHECK-NEXT: comment_attach.swift:240:6: Func/priorCommentTwoLineGap RawComment=[/// priorCommentTwoLineGap Aaa.\n///\n/// Bbb.\n]
+// CHECK-NEXT: comment_attach.swift:250:6: Func/priorCommentGyb RawComment=[/// priorCommentGyb Aaa.\n///\n/// Bbb.\n]
+ RawComment=[/// priorCommentTwoLineGap Aaa.\n///\n/// Bbb.\n]
+// CHECK-NEXT: comment_attach.swift:261:6: Func/priorBlockMultiLineComment RawComment=[/**\n priorBlockMultiLineComment Aaa.\n\n Bbb.\n */]
+// CHECK-NEXT: comment_attach.swift:269:6: Func/priorBlockSingleLineComment RawComment=[/**\n priorBlockSingleLineComment Aaa.\n\n Bbb.\n */]
+// CHECK-NEXT: comment_attach.swift:275:6: Func/priorBlockMixedComment RawComment=[/// priorBlockMixedComment Aaa.\n///\n/// Bbb.\n]

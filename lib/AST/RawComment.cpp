@@ -68,6 +68,9 @@ SingleRawComment::SingleRawComment(StringRef RawText, unsigned ColumnIndent)
     : RawText(RawText), Kind(static_cast<unsigned>(getCommentKind(RawText))),
       ColumnIndent(ColumnIndent) {}
 
+/// Converts a range of comments (ordinary or doc) to a \c RawComment with
+/// only the last range of doc comments. Single line doc comments are merged,
+/// but blocks are not. Gyb comments, ie. "// ###" are skipped entirely.
 static RawComment toRawComment(ASTContext &Context, CharSourceRange Range) {
   if (Range.isInvalid())
     return RawComment();
@@ -83,7 +86,7 @@ static RawComment toRawComment(ASTContext &Context, CharSourceRange Range) {
 
   SmallVector<SingleRawComment, 16> Comments;
   Token Tok;
-  unsigned LastEnd = 0;
+  unsigned LastCommentLine = 0;
   while (true) {
     L.lex(Tok);
     if (Tok.is(tok::eof))
@@ -91,25 +94,33 @@ static RawComment toRawComment(ASTContext &Context, CharSourceRange Range) {
     assert(Tok.is(tok::comment));
 
     auto SRC = SingleRawComment(Tok.getRange(), SM);
+    unsigned Start =
+        SM.getLineAndColumnInBuffer(Tok.getRange().getStart()).first;
+
     if (SRC.isOrdinary()) {
-      // Skip gyb comments that are line number markers.
-      if (!SRC.RawText.startswith("// ###")) {
+      // If there's a normal comment then reset the current group, unless it's
+      // a gyb comment in which case we should just skip it.
+      if (SRC.isGyb())
+        LastCommentLine = Start;
+      else
         Comments.clear();
-        LastEnd = 0;
-      }
       continue;
     }
 
-    // Merge comments if they are on same or consecutive lines.
-    unsigned Start =
-        SM.getLineAndColumnInBuffer(Tok.getRange().getStart()).first;
-    if (LastEnd > 0 && LastEnd + 1 < Start) {
+    // Merge and keep the *last* group, ie. if there's:
+    //   <comment1>
+    //   <whitespace>
+    //   <comment2>
+    //   <comment3>
+    // Only keep <comment2/3> and group into the one RawComment. Never merge
+    // block comments, even if they're consecutive.
+
+    if (!Comments.empty() && Start > LastCommentLine + 1)
       Comments.clear();
-      LastEnd = 0;
-    } else {
-      Comments.push_back(SRC);
-      LastEnd = SM.getLineAndColumnInBuffer(Tok.getRange().getEnd()).first;
-    }
+    Comments.push_back(SRC);
+
+    if (SRC.isLine())
+      LastCommentLine = Start;
   }
 
   RawComment Result;
